@@ -1,6 +1,5 @@
--- MCP Tool Interface Extension with Auto-CRUD and GUC Config
+-- MCP Tool Interface Extension with Auto-CRUD and GUC Config (Global Only)
 
--- Tool registry
 CREATE TABLE IF NOT EXISTS mcp_tools (
   id              SERIAL PRIMARY KEY,
   name            TEXT UNIQUE NOT NULL,
@@ -13,22 +12,13 @@ CREATE TABLE IF NOT EXISTS mcp_tools (
   is_enabled      BOOLEAN DEFAULT TRUE
 );
 
--- Table-level config override
-CREATE TABLE IF NOT EXISTS mcp_crud_config (
-  table_name TEXT PRIMARY KEY,
-  autogen_enabled BOOLEAN DEFAULT TRUE
-);
-
--- Default global config (as GUC)
 DO $$
 BEGIN
   PERFORM set_config('mcp_postgrest.crud_autogen_enabled', 'on', false);
 EXCEPTION WHEN OTHERS THEN
-  -- Ignore if already set
   NULL;
 END$$;
 
--- Main dispatcher function
 CREATE OR REPLACE FUNCTION call_tool(tool_name TEXT, args JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -53,24 +43,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Auto-CRUD generator
 CREATE OR REPLACE FUNCTION create_crud_tools_for_table(tablename TEXT)
 RETURNS VOID AS $$
 DECLARE
   table_exists BOOLEAN;
   tool_prefix TEXT := 'tool_';
 BEGIN
-  -- Global toggle via GUC
   IF current_setting('mcp_postgrest.crud_autogen_enabled', true)::boolean IS NOT TRUE THEN
     RAISE NOTICE 'Global autogen is disabled';
-    RETURN;
-  END IF;
-
-  -- Opt-out for specific tables
-  IF EXISTS (
-    SELECT 1 FROM mcp_crud_config WHERE table_name = tablename AND autogen_enabled = FALSE
-  ) THEN
-    RAISE NOTICE 'Autogen disabled for table %', tablename;
     RETURN;
   END IF;
 
@@ -82,7 +62,6 @@ BEGIN
     RAISE EXCEPTION 'Table "%" does not exist', tablename;
   END IF;
 
-  -- CREATE tool
   EXECUTE format($f$
     CREATE OR REPLACE FUNCTION %I_create_%I(params JSONB)
     RETURNS JSONB AS $$
@@ -95,7 +74,6 @@ BEGIN
     $$ LANGUAGE plpgsql;
   $f$, tool_prefix, tablename, tablename, tablename);
 
-  -- Tool metadata insert
   INSERT INTO mcp_tools (name, description, function_name, input_schema, output_schema)
   VALUES (
     format('create_%s', tablename),
@@ -108,7 +86,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Event trigger wrapper
 CREATE OR REPLACE FUNCTION mcp_on_create_table()
 RETURNS event_trigger AS $$
 DECLARE
@@ -122,7 +99,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Register trigger
 DROP EVENT TRIGGER IF EXISTS mcp_auto_crud;
 CREATE EVENT TRIGGER mcp_auto_crud
   ON ddl_command_end
