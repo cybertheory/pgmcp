@@ -1,0 +1,4 @@
+comment = 'MCP-compatible AI tool interface for Postgres'
+default_version = '0.1.0'
+relocatable = true
+schema = public
