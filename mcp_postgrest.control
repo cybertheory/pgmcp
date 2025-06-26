@@ -1,3 +1,2 @@
-comment = 'MCP middleware extension with CRUD autogen and PostgREST support'
-default_version = '0.1.1'
-relocatable = true
+default_version = '0.1.2'
+comment = 'MCP PostgREST Tool Interface'
