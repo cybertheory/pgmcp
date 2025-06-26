@@ -1,4 +1,5 @@
 # MCP-PostgREST Extension
+## THIS IS IN DEVELOPMENT DO NOT USE IN PRODUCTION WITHOUT EXTENVSIVE TESTING
 
 ## Overview
 PostgreSQL extension to define AI tools compatible with Anthropic's Model Context Protocol (MCP). Fully customizable, schema-agnostic, secure, and integrated with PostgREST.
